@@ -30,7 +30,7 @@ public class SittingManager {
     private static final HashMap<UUID, BlockPos> playersSitting = new HashMap<>();
 
     public static ActionResult onBlockRightClick(PlayerEntity player, World world, Hand hand, BlockHitResult blockHitResult) {
-        if(world.isClient() || player.isSneaking()) return ActionResult.PASS;
+        if(world.isClient() || player.isSneaking() || player.hasVehicle() ) return ActionResult.PASS;
         BlockPos hittedBlockPos = blockHitResult.getBlockPos();
         BlockState blockState = world.getBlockState(hittedBlockPos);
 
