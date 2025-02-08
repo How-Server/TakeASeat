@@ -3,6 +3,9 @@ package com.lx862.takeaseat;
 import com.google.gson.JsonArray;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Items;
+import net.minecraft.item.consume.UseAction;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -58,6 +61,6 @@ public class Util {
     }
 
     static boolean playerHandIsEmpty(PlayerEntity player) {
-        return player.getMainHandStack().isEmpty() && player.getOffHandStack().isEmpty();
+        return player.getMainHandStack().isEmpty() && player.getOffHandStack().getUseAction() == UseAction.NONE && !(player.getOffHandStack().getItem() instanceof BlockItem);
     }
 }
