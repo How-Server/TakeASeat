@@ -5,9 +5,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.lx862.takeaseat.TakeASeat;
 import com.lx862.takeaseat.Util;
-import com.lx862.takeaseat.data.TagKeyUtil;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.Block;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.JsonHelper;
@@ -23,7 +23,7 @@ import java.util.List;
 public class Config {
     private static final Path CONFIG_PATH = Paths.get(FabricLoader.getInstance().getConfigDir().toString(), "takeaseat.json");
     private final List<Identifier> allowedBlockId = new ArrayList<>();
-    private final List<TagKey<Block>> allowedBlockTag = new ArrayList<>(Arrays.asList(TagKeyUtil.fromBlock(Identifier.of("stairs")), TagKeyUtil.fromBlock(Identifier.of("slabs"))));
+    private final List<TagKey<Block>> allowedBlockTag = new ArrayList<>(Arrays.asList(TagKey.of(RegistryKeys.BLOCK, Identifier.of("stairs")), TagKey.of(RegistryKeys.BLOCK, Identifier.of("slabs"))));
     private boolean ensurePlayerWontSuffocate = true;
     private boolean mustBeEmptyHandToSit = true;
     private boolean blockMustBeLowerThanPlayer = true;
@@ -48,7 +48,7 @@ public class Config {
 
                 if (jsonConfig.has("allowedBlockTag")) {
                     jsonConfig.getAsJsonArray("allowedBlockTag").forEach(e -> {
-                        allowedBlockTag.add(TagKeyUtil.fromBlock(Identifier.of(e.getAsString())));
+                        allowedBlockTag.add(TagKey.of(RegistryKeys.BLOCK, Identifier.of(e.getAsString())));
                     });
                 }
 
@@ -60,8 +60,7 @@ public class Config {
                 maxDistance = JsonHelper.getDouble(jsonConfig, "maxDistance", maxDistance);
                 requiredOpLevel = JsonHelper.getInt(jsonConfig, "requiredOpLevel", requiredOpLevel);
             } catch (Exception e) {
-                TakeASeat.LOGGER.warn("[TakeASeat] Unable to read config file! Regenerating one...");
-                e.printStackTrace();
+                TakeASeat.LOGGER.warn("[TakeASeat] Unable to read config file!", e);
                 write();
             }
         } else {
@@ -85,7 +84,7 @@ public class Config {
 
             Files.write(CONFIG_PATH, Collections.singleton(new GsonBuilder().setPrettyPrinting().create().toJson(jsonConfig)));
         } catch (Exception e) {
-            TakeASeat.LOGGER.error("", e);
+            TakeASeat.LOGGER.error("Failed to generate config file!", e);
         }
     }
 
