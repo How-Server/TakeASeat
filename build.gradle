@@ -4,7 +4,7 @@ plugins {
 }
 
 group = project.maven_group
-version = project.mod_version + "+mc" + project.minecraft_version
+version = "${project.mod_version}+${project.minecraft_version}"
 
 base {
 	archivesName = project.archives_base_name
@@ -24,10 +24,9 @@ dependencies {
 	mappings "net.fabricmc:yarn:${project.yarn_mapping}:v2"
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
+	include(modImplementation("me.lucko:fabric-permissions-api:${project.fabric_permission_api_version}"))
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-	include(modImplementation('me.lucko:fabric-permissions-api:0.3.3'))
 }
 
 processResources {
