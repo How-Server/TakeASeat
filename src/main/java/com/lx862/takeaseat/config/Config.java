@@ -6,12 +6,11 @@ import com.google.gson.JsonParser;
 import com.lx862.takeaseat.TakeASeat;
 import com.lx862.takeaseat.Util;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.block.Block;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.JsonHelper;
-
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.GsonHelper;
+import net.minecraft.world.level.block.Block;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,7 +22,7 @@ import java.util.List;
 public class Config {
     private static final Path CONFIG_PATH = Paths.get(FabricLoader.getInstance().getConfigDir().toString(), "takeaseat.json");
     private final List<Identifier> allowedBlockId = new ArrayList<>();
-    private final List<TagKey<Block>> allowedBlockTag = new ArrayList<>(Arrays.asList(TagKey.of(RegistryKeys.BLOCK, Identifier.of("stairs")), TagKey.of(RegistryKeys.BLOCK, Identifier.of("slabs"))));
+    private final List<TagKey<Block>> allowedBlockTag = new ArrayList<>(Arrays.asList(TagKey.create(Registries.BLOCK, Identifier.parse("stairs")), TagKey.create(Registries.BLOCK, Identifier.parse("slabs"))));
     private boolean ensurePlayerWontSuffocate = true;
     private boolean mustBeEmptyHandToSit = true;
     private boolean blockMustBeLowerThanPlayer = true;
@@ -42,23 +41,23 @@ public class Config {
 
                 if (jsonConfig.has("allowedBlockId")) {
                     jsonConfig.getAsJsonArray("allowedBlockId").forEach(e -> {
-                        allowedBlockIdToAdd.add(Identifier.of(e.getAsString()));
+                        allowedBlockIdToAdd.add(Identifier.parse(e.getAsString()));
                     });
                 }
 
                 if (jsonConfig.has("allowedBlockTag")) {
                     jsonConfig.getAsJsonArray("allowedBlockTag").forEach(e -> {
-                        allowedBlockTagToAdd.add(TagKey.of(RegistryKeys.BLOCK, Identifier.of(e.getAsString())));
+                        allowedBlockTagToAdd.add(TagKey.create(Registries.BLOCK, Identifier.parse(e.getAsString())));
                     });
                 }
 
-                ensurePlayerWontSuffocate = JsonHelper.getBoolean(jsonConfig, "ensurePlayerWontSuffocate", ensurePlayerWontSuffocate);
-                stairs025Offset = JsonHelper.getBoolean(jsonConfig, "stairsOffset", stairs025Offset);
-                mustBeEmptyHandToSit = JsonHelper.getBoolean(jsonConfig, "mustBeEmptyHandToSit", mustBeEmptyHandToSit);
-                blockMustBeLowerThanPlayer = JsonHelper.getBoolean(jsonConfig, "blockMustBeLowerThanPlayer", blockMustBeLowerThanPlayer);
-                mustNotBeObstructed = JsonHelper.getBoolean(jsonConfig, "mustNotBeObstructed", mustNotBeObstructed);
-                maxDistance = JsonHelper.getDouble(jsonConfig, "maxDistance", maxDistance);
-                requiredOpLevel = JsonHelper.getInt(jsonConfig, "requiredOpLevel", requiredOpLevel);
+                ensurePlayerWontSuffocate = GsonHelper.getAsBoolean(jsonConfig, "ensurePlayerWontSuffocate", ensurePlayerWontSuffocate);
+                stairs025Offset = GsonHelper.getAsBoolean(jsonConfig, "stairsOffset", stairs025Offset);
+                mustBeEmptyHandToSit = GsonHelper.getAsBoolean(jsonConfig, "mustBeEmptyHandToSit", mustBeEmptyHandToSit);
+                blockMustBeLowerThanPlayer = GsonHelper.getAsBoolean(jsonConfig, "blockMustBeLowerThanPlayer", blockMustBeLowerThanPlayer);
+                mustNotBeObstructed = GsonHelper.getAsBoolean(jsonConfig, "mustNotBeObstructed", mustNotBeObstructed);
+                maxDistance = GsonHelper.getAsDouble(jsonConfig, "maxDistance", maxDistance);
+                requiredOpLevel = GsonHelper.getAsInt(jsonConfig, "requiredOpLevel", requiredOpLevel);
 
                 allowedBlockId.addAll(allowedBlockIdToAdd);
                 allowedBlockTag.addAll(allowedBlockTagToAdd);
@@ -76,7 +75,7 @@ public class Config {
             TakeASeat.LOGGER.info("[TakeASeat] Writing Config...");
             final JsonObject jsonConfig = new JsonObject();
             jsonConfig.add("allowedBlockId", Util.toJsonArray(allowedBlockId, Identifier::toString));
-            jsonConfig.add("allowedBlockTag", Util.toJsonArray(allowedBlockTag, (tagKey) -> tagKey.id().toString()));
+            jsonConfig.add("allowedBlockTag", Util.toJsonArray(allowedBlockTag, (tagKey) -> tagKey.location().toString()));
             jsonConfig.addProperty("stairsOffset", stairs025Offset);
             jsonConfig.addProperty("ensurePlayerWontSuffocate", ensurePlayerWontSuffocate);
             jsonConfig.addProperty("mustBeEmptyHandToSit", mustBeEmptyHandToSit);

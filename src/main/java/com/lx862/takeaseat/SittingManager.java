@@ -2,27 +2,26 @@ package com.lx862.takeaseat;
 
 import com.lx862.takeaseat.config.Config;
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.SlabBlock;
-import net.minecraft.block.StairsBlock;
-import net.minecraft.block.enums.BlockHalf;
-import net.minecraft.block.enums.SlabType;
-import net.minecraft.entity.AreaEffectCloudEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.World;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -30,29 +29,29 @@ import java.util.UUID;
 public class SittingManager {
     private static final HashMap<UUID, BlockPos> playersSitting = new HashMap<>();
 
-    public static ActionResult onBlockRightClick(PlayerEntity player, World world, Hand hand, BlockHitResult blockHitResult) {
-        if(world.isClient() || player.isSneaking()) return ActionResult.PASS;
+    public static InteractionResult onBlockRightClick(Player player, Level world, InteractionHand hand, BlockHitResult blockHitResult) {
+        if(world.isClientSide() || player.isShiftKeyDown()) return InteractionResult.PASS;
         BlockPos hittedBlockPos = blockHitResult.getBlockPos();
         BlockState blockState = world.getBlockState(hittedBlockPos);
 
         if(!playerCanSit(player, world, hittedBlockPos, blockState)) {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         } else {
             addPlayerToSeat(world, blockState, hittedBlockPos, player);
-            return ActionResult.SUCCESS_SERVER;
+            return InteractionResult.SUCCESS_SERVER;
         }
     }
 
-    public static void addPlayerToSeat(World world, BlockState seatBlockState, BlockPos seatPos, PlayerEntity player) {
-        if(player.hasVehicle()) {
-            player.dismountVehicle();
+    public static void addPlayerToSeat(Level world, BlockState seatBlockState, BlockPos seatPos, Player player) {
+        if(player.isPassenger()) {
+            player.removeVehicle();
         }
 
-        Vec3d seatEntityPos = getSeatPosition(world, seatBlockState, seatPos);
+        Vec3 seatEntityPos = getSeatPosition(world, seatBlockState, seatPos);
         Entity sitEntity = spawnSeatEntity(world, seatEntityPos, seatPos);
         player.startRiding(sitEntity);
 
-        playersSitting.put(player.getUuid(), seatPos);
+        playersSitting.put(player.getUUID(), seatPos);
     }
 
     public static void removeBlockPosFromSeat(BlockPos seatPos) {
@@ -63,7 +62,7 @@ public class SittingManager {
         }
     }
 
-    private static boolean playerCanSit(PlayerEntity player, World world, BlockPos hittedBlockPos, BlockState blockState) {
+    private static boolean playerCanSit(Player player, Level world, BlockPos hittedBlockPos, BlockState blockState) {
         Block block = blockState.getBlock();
         Identifier blockId = Util.getBlockId(block);
         Config config = TakeASeat.getConfig();
@@ -94,7 +93,7 @@ public class SittingManager {
             return false;
         }
 
-        if(config.maxDistance() > 0 && Util.euclideanDistance(hittedBlockPos, player.getBlockPos()) > config.maxDistance()) {
+        if(config.maxDistance() > 0 && Util.euclideanDistance(hittedBlockPos, player.blockPosition()) > config.maxDistance()) {
             TakeASeat.LOGGER.debug("[TakeASeat] Player is too far from seat.");
             return false;
         }
@@ -104,7 +103,7 @@ public class SittingManager {
             return false;
         }
 
-        if(config.mustNotBeObstructed() && hasObstruction(world, hittedBlockPos, player.getEyePos())) {
+        if(config.mustNotBeObstructed() && hasObstruction(world, hittedBlockPos, player.getEyePosition())) {
             TakeASeat.LOGGER.debug("[TakeASeat] There's a block between the player and the seat.");
             return false;
         }
@@ -112,24 +111,24 @@ public class SittingManager {
         return true;
     }
 
-    private static boolean blockAboveCanSuffocate(World world, BlockPos pos) {
-        BlockPos abovePos = pos.up();
+    private static boolean blockAboveCanSuffocate(Level world, BlockPos pos) {
+        BlockPos abovePos = pos.above();
         BlockState blockState = world.getBlockState(abovePos);
-        return blockState.shouldSuffocate(world, abovePos);
+        return blockState.isSuffocating(world, abovePos);
     }
 
     private static boolean blockInTag(BlockState blockState) {
         for(TagKey<Block> tag : TakeASeat.getConfig().getAllowedBlockTag()) {
-            if(blockState.isIn(tag)) {
+            if(blockState.is(tag)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean hasObstruction(World world, BlockPos targetBlockPos, Vec3d playerPos) {
+    private static boolean hasObstruction(Level world, BlockPos targetBlockPos, Vec3 playerPos) {
         /* Jank code begins! */
-        Vec3d targetPos = Util.toVec3d(targetBlockPos);
+        Vec3 targetPos = Util.toVec3d(targetBlockPos);
         BlockPos playerBlockPos = Util.toBlockPos(playerPos.x, playerPos.y, playerPos.z);
         double distance = Util.euclideanDistance(targetPos, playerPos, false);
         double increment = 1 / distance;
@@ -142,12 +141,12 @@ public class SittingManager {
             lerpProgress += increment;
 
             for(int i = 0; i < yDifference; i++) {
-                Vec3d lerped = targetPos.lerp(playerPos, lerpProgress);
+                Vec3 lerped = targetPos.lerp(playerPos, lerpProgress);
                 BlockPos finalPos = Util.toBlockPos(lerped.x, lowestY + i, lerped.z);
                 if(Util.equalXZBlockPos(playerBlockPos, finalPos) || finalPos.equals(targetBlockPos)) continue;
 
                 BlockState blockState = world.getBlockState(finalPos);
-                if(blockState.getCollisionShape(world, finalPos) != VoxelShapes.empty()) {
+                if(blockState.getCollisionShape(world, finalPos) != Shapes.empty()) {
                     return true;
                 }
             }
@@ -156,32 +155,32 @@ public class SittingManager {
         return false;
     }
 
-    private static Vec3d getSeatPosition(World world, BlockState blockState, BlockPos pos) {
-        Vec3d centeredBlockPos = Vec3d.ofBottomCenter(pos);
-        if(blockState.getBlock() instanceof StairsBlock) {
-            Direction dir = blockState.get(StairsBlock.FACING);
-            BlockHalf half = blockState.get(StairsBlock.HALF);
-            double offsetX = dir.getOffsetX() * 0.25;
-            double offsetY = half == BlockHalf.TOP ? 0.5 : 0;
-            double offsetZ = dir.getOffsetZ() * 0.25;
+    private static Vec3 getSeatPosition(Level world, BlockState blockState, BlockPos pos) {
+        Vec3 centeredBlockPos = Vec3.atBottomCenterOf(pos);
+        if(blockState.getBlock() instanceof StairBlock) {
+            Direction dir = blockState.getValue(StairBlock.FACING);
+            Half half = blockState.getValue(StairBlock.HALF);
+            double offsetX = dir.getStepX() * 0.25;
+            double offsetY = half == Half.TOP ? 0.5 : 0;
+            double offsetZ = dir.getStepZ() * 0.25;
 
             if(!TakeASeat.getConfig().stairs025Offset()) {
                 offsetX = 0;
                 offsetZ = 0;
             }
 
-            centeredBlockPos = new Vec3d(centeredBlockPos.getX() - offsetX, centeredBlockPos.getY() + offsetY, centeredBlockPos.getZ() - offsetZ);
+            centeredBlockPos = new Vec3(centeredBlockPos.x() - offsetX, centeredBlockPos.y() + offsetY, centeredBlockPos.z() - offsetZ);
         }
 
         if(blockState.getBlock() instanceof SlabBlock) {
-            SlabType slabType = blockState.get(SlabBlock.TYPE);
+            SlabType slabType = blockState.getValue(SlabBlock.TYPE);
             if(slabType == SlabType.TOP || slabType == SlabType.DOUBLE) {
-                centeredBlockPos = new Vec3d(centeredBlockPos.getX(), pos.getY() + 0.5, centeredBlockPos.getZ());
+                centeredBlockPos = new Vec3(centeredBlockPos.x(), pos.getY() + 0.5, centeredBlockPos.z());
             }
         }
 
-        if(blockState.isFullCube(world, pos)) {
-            centeredBlockPos = new Vec3d(centeredBlockPos.getX(), pos.getY() + 0.5, centeredBlockPos.getZ());
+        if(blockState.isCollisionShapeFullBlock(world, pos)) {
+            centeredBlockPos = new Vec3(centeredBlockPos.x(), pos.getY() + 0.5, centeredBlockPos.z());
         }
 
         return centeredBlockPos;
@@ -193,14 +192,14 @@ public class SittingManager {
      * @param pos A Vec3d position that the entity should spawn
      * @return The entity for the player to be ridden.
      */
-    public static Entity spawnSeatEntity(World world, Vec3d pos, BlockPos seatPos) {
-        AreaEffectCloudEntity sitEntity = new AreaEffectCloudEntity(world, pos.getX(), pos.getY(), pos.getZ()) {
+    public static Entity spawnSeatEntity(Level world, Vec3 pos, BlockPos seatPos) {
+        AreaEffectCloud sitEntity = new AreaEffectCloud(world, pos.x(), pos.y(), pos.z()) {
             @Override
             public void tick() {
                 Entity firstPassenger = getFirstPassenger();
                 if(firstPassenger == null || world.getBlockState(seatPos).isAir()) {
                     removeBlockPosFromSeat(seatPos);
-                    this.kill((ServerWorld)world);
+                    this.kill((ServerLevel)world);
                 }
 
                 super.tick();
@@ -212,7 +211,7 @@ public class SittingManager {
         sitEntity.setWaitTime(0);
         sitEntity.setRadius(0);
         sitEntity.setDuration(Integer.MAX_VALUE);
-        world.spawnEntity(sitEntity);
+        world.addFreshEntity(sitEntity);
         return sitEntity;
     }
 }
