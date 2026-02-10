@@ -7,6 +7,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 
@@ -58,6 +60,6 @@ public class Util {
     }
 
     static boolean playerHandIsEmpty(Player player) {
-        return player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty();
+        return player.getMainHandItem().isEmpty() && player.getOffhandItem().getUseAnimation().equals(ItemUseAnimation.NONE) && !(player.getOffhandItem().getItem() instanceof BlockItem);
     }
 }

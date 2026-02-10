@@ -30,7 +30,7 @@ public class SittingManager {
     private static final HashMap<UUID, BlockPos> playersSitting = new HashMap<>();
 
     public static InteractionResult onBlockRightClick(Player player, Level world, InteractionHand hand, BlockHitResult blockHitResult) {
-        if(world.isClientSide() || player.isShiftKeyDown()) return InteractionResult.PASS;
+        if(world.isClientSide() || player.isShiftKeyDown() || player.isPassenger()) return InteractionResult.PASS;
         BlockPos hittedBlockPos = blockHitResult.getBlockPos();
         BlockState blockState = world.getBlockState(hittedBlockPos);
 
